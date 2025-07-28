@@ -1,3 +1,4 @@
+import json
 from kafka import KafkaProducer
 import pandas as pd
 import time
@@ -8,8 +9,11 @@ data = pd.read_csv('Proyecto_Final/producers/data.csv', encoding='windows-1252')
 comments = data.iloc[:9160, :2].to_dict(orient='records')
 print('Comments loaded:', len(comments))
 
-producer = KafkaProducer(bootstrap_servers='localhost:9092')
-'''
+producer = KafkaProducer(bootstrap_servers='localhost:9092',
+                         value_serializer=lambda v: json.dumps(v).encode('utf-8')
+                         )
+
+
 while True:
     try:
         comment = random.choice(comments)
@@ -23,4 +27,3 @@ while True:
 
 producer.flush()
 producer.close()
-'''
