@@ -5,11 +5,11 @@ import random
 
 data = pd.read_csv('Proyecto_Final/producers/data.csv', encoding='windows-1252')
 
-comments = data.iloc[:, :2].to_dict(orient='records')
+comments = data.iloc[:9160, :2].to_dict(orient='records')
 print('Comments loaded:', len(comments))
 
 producer = KafkaProducer(bootstrap_servers='localhost:9092')
-
+'''
 while True:
     try:
         comment = random.choice(comments)
@@ -23,3 +23,4 @@ while True:
 
 producer.flush()
 producer.close()
+'''
