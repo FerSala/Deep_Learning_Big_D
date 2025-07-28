@@ -1,7 +1,21 @@
 from kafka import KafkaProducer
 import pandas as pd
+import time
+import random
 
 data = pd.read_csv('Proyecto_Final/producers/data.csv', encoding='windows-1252')
 
 comments = data.iloc[:, :2].to_dict(orient='records')
-print(comments)
+print('Comments loaded:', len(comments))
+
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
+
+while True:
+    comment = random.choice(comments)
+    key = str(comment['id']).encode('utf-8')
+    value = str(comment['comment']).encode('utf-8')
+    producer.send('comments', key=key, value=value)
+    time.sleep(random.uniform(0.5, 3.0))
+
+producer.flush()
+producer.close()
