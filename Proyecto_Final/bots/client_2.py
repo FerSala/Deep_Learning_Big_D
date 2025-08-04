@@ -1,9 +1,10 @@
+import json
 from kafka import KafkaProducer
 import pandas as pd
 import time
 import random
 
-data = pd.read_csv('Proyecto_Final/producers/data.csv', encoding='windows-1252')
+data = pd.read_csv('Proyecto_Final/bots/data.csv', encoding='windows-1252')
 
 comments = data.iloc[9161:18320, :2].to_dict(orient='records')
 
