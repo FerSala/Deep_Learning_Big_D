@@ -88,10 +88,7 @@ class HBase:
         import happybase
         self.connection = happybase.Connection(host=host)
         self.table = self.connection.table('my_table')
-    #Problemas con tipo de valor binario
-    #Problemas con la creacion de la table, no estaba creada y por ende el hbase no podia guardar los datos en ella.
-    #Verificar con codigo que la table este creada antes de darle datos.
-    #El formato de las columnas debe tener el b'cf':'col' en su key
+        
     def clean_data_for_hbase(self, df):
         clean_df = df.copy()
         # Fill all nulls based on column type
@@ -281,3 +278,4 @@ print('El mes con mas ventas fue:', best_month[0], 'con: $', best_month[1])
 #PRobar
 best_month = max(sales_by_month.items(), key=lambda x: x[1])
 print('El mes con más ventas fue:', best_month[0], 'con: $', best_month[1])
+hbase_client.connection.close()
