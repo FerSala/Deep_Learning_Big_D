@@ -291,39 +291,43 @@ finish = datetime.now()
 print("Tiempo de subida a HBase:", finish - start, "segundos", '\n')
 data = hbase_client.request_data()
 
-#Cuál es la categoría más vendida?
+
 category_sales = defaultdict(float)
+brand_sales = defaultdict(float)
+sales_by_month = defaultdict(float)
 
 for _, row in data:
     row_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in row.items()}
     
     category = row_data.get('cf:category_id')
     sales = row_data.get('cf:price')
+    brand = row_data.get('cf:brand')
+    date = row_data.get('cf:event_time')
 
     if category and sales:
         try:
             category_sales[category] += float(sales)
         except ValueError:
             continue  # Ignorar valores no numéricos
-
-category_most_sold = max(category_sales.items(), key=lambda x: x[1])
-print('La categoria con mas ventas fue',category_most_sold[0], 'con: $', category_most_sold[1])
-
-#Cuál marca (brand) generó más ingresos brutos?
-brand_sales = defaultdict(float)
-
-for _, row in data:
-    row_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in row.items()}
-    
-    brand = row_data.get('cf:brand')
-    sales = row_data.get('cf:price')
-
     if brand and sales:
         try:
             brand_sales[brand] += float(sales)
         except ValueError:
             continue  # Ignorar valores no numéricos
+    if date and sales:
+        try:
+            date_obj = datetime.strptime(date, '%Y-%m-%d %H:%M')  # o el formato que estés usando
+            month_str = date_obj.strftime('%Y-%m')
+            sales_by_month[month_str] += float(sales)
+        except ValueError:
+            continue
+#Cuál es la categoría más vendida?
+category_most_sold = max(category_sales.items(), key=lambda x: x[1])
+print('La categoria con mas ventas fue',category_most_sold[0], 'con: $', category_most_sold[1])
 
+#Cuál marca (brand) generó más ingresos brutos?
 brand_most_sold = max(brand_sales.items(), key=lambda x: x[1])
 print('La categoria con mas ventas fue',brand_most_sold[0], 'con: $', brand_most_sold[1])
 #Qué mes tuvo más ventas?
+best_month = max(sales_by_month, key=sales_by_month.get)
+print('El mes con mas ventas fue:', best_month[0], 'con: $', best_month[1])
