@@ -20,19 +20,15 @@ class Mongo:
         from pymongo import MongoClient
         self.client = MongoClient(host, port)
         self.collection = self.client[db_name][collection]
-#Para subir datos a MongoDB, se puede usar insert_many o update_one con upsert=True para evitar duplicados.
-#Los datos deben ser convertidos a un formato adecuado, como diccionarios o formatos JSON.
-#Para realizar consultas, se puede usar find() o aggregate() para operaciones más complejas con calculos matematicos de por medio.
-#Para este ejemplo se puede limpiar la db de datos previos con drop() si es necesario para evitar tiempos de procesamiento largos.
-#Ya que el codigo esta revisando 1 por 1 los datos para evitar duplicados.
-    def upload(self, data, id_field=None):
+
+    def upload(self, data):
         if data is None:
             raise ValueError("Data is empty.")
         else:
             data = data.to_dict('records')
         self.collection.drop()  # Limpiar la colección antes de insertar nuevos datos
         try:
-            self.collection.insert_many(data, ordered=False) #Ordered=False permite insertar múltiples documentos sin detenerse ante un error.
+            self.collection.insert_many(data)
         except Exception as e:
             print(f"Error inserting data: {e}")
                 
@@ -53,20 +49,7 @@ class Redis:
     def __init__(self, host='localhost', port=6379):
         import redis
         self.client = redis.Redis(host=host, port=port)
-    # Para subir datos a Redis, se pueden usar los comandos set o hmset para almacenar datos como hashes.
-    # Los datos deben ser convertidos a un formato adecuado, como JSON o diccionarios
-    # Para realizar consultas, se puede usar get o hgetall para obtener los datos almacenados.
-    # Para evitar duplicados, se puede limpiar la base de datos antes de insertar nuevos datos
-    # o usar un esquema de claves que evite colisiones.
-    # Redis no es una base de datos relacional, por lo que no soporta consultas complejas como MongoDB.
-    # Sin embargo, se pueden usar patrones de claves para organizar los datos y realizar consultas simples.
-    # En este ejemplo, se usa un patrón de claves para almacenar los datos como hashes.
-    # Se usa un pipeline para mejorar el rendimiento al insertar múltiples registros.
-    # Se usa flushall para limpiar la base de datos antes de insertar nuevos datos.
-    # Se usa json.dumps para serializar los datos a JSON antes de almacenarlos.
-    # Se usa json.loads para deserializar los datos de JSON al obtenerlos.
-    # Se usa scan para obtener todas las claves que coincidan con un patrón.
-    # Se usa mget para obtener múltiples valores en un solo paso.
+
     def upload(self, data):
         self.client.flushall()  # Limpiar la base de datos antes de insertar nuevos datos
         pipe = self.client.pipeline()
@@ -76,8 +59,6 @@ class Redis:
         pipe.execute()
 
     def request_data(self, key_pattern='item:*'):
-        #keys = self.client.keys(key_pattern)
-        #return [json.loads(self.client.get(key).decode('utf-8')) for key in keys]
         cursor = 0
         all_keys = []
 
@@ -150,50 +131,11 @@ class HBase:
             rows = self.table.scan()
         return rows
     
-class HBaseClient:
-    def __init__(self, host='localhost', table_name='my_table', column_family='cf'):
-        import happybase
-        self.connection = happybase.Connection(host)
-        self.connection.open()
-        self.table_name = table_name
-        self.cf = column_family.encode('utf-8')
-        
-        # Verificamos si existe la tabla
-        if table_name.encode('utf-8') not in self.connection.tables():
-            self.connection.create_table(table_name, {self.cf: dict()})
-        self.table = self.connection.table(table_name)
-
-    def sanitize_value(self, value):
-        if pd.isnull(value):
-            return b"null"
-        elif isinstance(value, (pd.Timestamp, datetime)):
-            return str(value).encode('utf-8')
-        else:
-            return str(value).encode('utf-8')
-
-    def upload(self, df, batch_size=1000):
-        data = df.to_dict('records')
-        
-        with self.table.batch(batch_size=batch_size) as batch:
-            for i, item in enumerate(data):
-                row_key = f"row{i}".encode('utf-8')
-                formatted_data = {
-                    f"{self.cf.decode('utf-8')}:{k}": self.sanitize_value(v)
-                    for k, v in item.items()
-                }
-                batch.put(row_key, formatted_data)
-                if i == 4999:
-                    print('Record 5000')
-                
-
-    def close(self):
-        self.connection.close()
-'''
 #MongoDB:
 start = datetime.now()
 print("Subiendo datos a MongoDB...")
 mongo = Mongo()
-mongo.upload(df, id_field='order_id')
+mongo.upload(df)
 finish = datetime.now()
 print("Tiempo de subida a MongoDB:", finish - start, "segundos", '\n')
 
@@ -225,7 +167,7 @@ ventas_mongo_month = mongo.request_data([
 finish = datetime.now()
 print("Tiempo de ejecución para el mes con más ventas:", finish - start, "segundos")
 print("Mes con más ventas:", ventas_mongo_month[0]['_id'], "con ventas totales de: ",'$',ventas_mongo_month[0]['total_sales'], '\n')
-
+mongo.close()
 
 #Redis:
 start = datetime.now()
@@ -284,7 +226,8 @@ finish = datetime.now()
 print("Tiempo de ejecución para el mes con más ventas en Redis:", finish - start, "segundos")
 if ventas_redis_month_sorted:
     print("Mes con más ventas:", ventas_redis_month_sorted[0][0], "con ventas totales de: ",'$',ventas_redis_month_sorted[0][1], '\n')
-'''
+redis_client.close()
+
 #HBase:
 start = datetime.now()
 print("Subiendo datos a HBase...")
@@ -334,3 +277,7 @@ print('La categoria con mas ventas fue',brand_most_sold[0], 'con: $', brand_most
 #Qué mes tuvo más ventas?
 best_month = max(sales_by_month, key=sales_by_month.get)
 print('El mes con mas ventas fue:', best_month[0], 'con: $', best_month[1])
+
+#PRobar
+best_month = max(sales_by_month.items(), key=lambda x: x[1])
+print('El mes con más ventas fue:', best_month[0], 'con: $', best_month[1])
