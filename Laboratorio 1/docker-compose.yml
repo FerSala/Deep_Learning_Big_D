@@ -1,13 +1,4 @@
-version: '3.8'
-
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-    ports:
-      - "2181:2181"
-
   mongodb:
     image: mongo:7
     container_name: mongodb
@@ -17,7 +8,7 @@ services:
       - mongodb_data:/data/db
 
   redis:
-    image: redis:7.2
+    image: redis:latest
     container_name: redis
     ports:
       - "6379:6379"
@@ -26,19 +17,19 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
 
   hbase:
-    image: harisekhon/hbase
+    image: harisekhon/hbase:latest
     container_name: hbase
+    platform: linux/amd64
+    environment:
+      - HBASE_THRIFT_HTTP=false
     ports:
       - "16010:16010"  # Web UI
       - "9090:9090"    # Thrift
-      - "2181:2181"    # ZooKeeper inside
-
+      - "2181:2181"    # ZooKeeper
+    volumes:
+      - hbase_data:/hbase
+ 
 volumes:
   mongodb_data:
   redis_data:
   hbase_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /path/to/hbase/data
-      o: bind
