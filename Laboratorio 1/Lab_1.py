@@ -4,9 +4,12 @@ import json
 from collections import defaultdict
 
 df = pd.read_csv('Laboratorio 1/kz.csv.zip')
-# Convertir la columna 'event_time' a tipo datetime
 #EDA:
-
+print('Encabezados de columnas: ',df.columns)
+print('Cantidad de rows: ',len(df))
+print(df.info())
+print('Datos nulos: \n',df.isna().sum())
+print('Datos vacios: \n', (df == '').sum())
 df['event_time'] = pd.to_datetime(df['event_time'], errors='coerce')
 df['event_time'] = df['event_time'].dt.strftime("%Y-%m-%d %H:%M")
 # Reemplazar valores NaN de price con 0
