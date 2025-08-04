@@ -11,7 +11,6 @@ print(df.info())
 print('Datos nulos: \n',df.isna().sum())
 print('Datos vacios: \n', (df == '').sum())
 df['event_time'] = pd.to_datetime(df['event_time'], errors='coerce')
-df['event_time'] = df['event_time'].dt.strftime("%Y-%m-%d %H:%M")
 # Reemplazar valores NaN de price con 0
 df['price'] = df['price'].fillna(0)
 
@@ -44,7 +43,7 @@ class Mongo:
     
     def close(self):
         self.client.close()
-#  Redis no maneja bien estructuras complejas como Mongo. Debes guardar los registros como JSON o hash manualmente.
+
 class Redis:
     def __init__(self, host='localhost', port=6379):
         import redis
@@ -87,8 +86,11 @@ class HBase:
     def __init__(self, host='localhost'):
         import happybase
         self.connection = happybase.Connection(host=host)
+        if 'my_table' not in self.connection.tables():
+            self.connection.create_table(
+        'my_table',
+        {'cf': dict()})
         self.table = self.connection.table('my_table')
-        
     def clean_data_for_hbase(self, df):
         clean_df = df.copy()
         # Fill all nulls based on column type
@@ -229,16 +231,15 @@ redis_client.close()
 start = datetime.now()
 print("Subiendo datos a HBase...")
 hbase_client = HBase()
-#hbase_client.upload(df)
+hbase_client.upload(df)
 finish = datetime.now()
 print("Tiempo de subida a HBase:", finish - start, "segundos", '\n')
 data = hbase_client.request_data()
 
-
 category_sales = defaultdict(float)
 brand_sales = defaultdict(float)
 sales_by_month = defaultdict(float)
-
+start = datetime.now()
 for _, row in data:
     row_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in row.items()}
     
@@ -259,23 +260,22 @@ for _, row in data:
             continue  # Ignorar valores no numéricos
     if date and sales:
         try:
-            date_obj = datetime.strptime(date, '%Y-%m-%d %H:%M')  # o el formato que estés usando
-            month_str = date_obj.strftime('%Y-%m')
-            sales_by_month[month_str] += float(sales)
+            date_obj = datetime.strptime(date, '%Y-%m-%d %H:%M:%S%z')  # o el formato que estés usando
+            month_key = date_obj.strftime('%Y-%m')
+            sales_by_month[month_key] += float(sales)
         except ValueError:
             continue
+finish = datetime.now()
 #Cuál es la categoría más vendida?
+print('Tiempo de procesamiento para analisis: ', finish - start, 'segundos.', '\n')
 category_most_sold = max(category_sales.items(), key=lambda x: x[1])
-print('La categoria con mas ventas fue',category_most_sold[0], 'con: $', category_most_sold[1])
+print('La categoria con mas ventas fue',category_most_sold[0], 'con: $', category_most_sold[1], '\n')
 
 #Cuál marca (brand) generó más ingresos brutos?
 brand_most_sold = max(brand_sales.items(), key=lambda x: x[1])
-print('La categoria con mas ventas fue',brand_most_sold[0], 'con: $', brand_most_sold[1])
+print('La categoria con mas ventas fue',brand_most_sold[0], 'con: $', brand_most_sold[1], '\n')
 #Qué mes tuvo más ventas?
-best_month = max(sales_by_month, key=sales_by_month.get)
-print('El mes con mas ventas fue:', best_month[0], 'con: $', best_month[1])
-
-#PRobar
 best_month = max(sales_by_month.items(), key=lambda x: x[1])
 print('El mes con más ventas fue:', best_month[0], 'con: $', best_month[1])
+
 hbase_client.connection.close()
