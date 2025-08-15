@@ -1,6 +1,12 @@
-version: '3.8'
 
 services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -25,10 +31,23 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     volumes:
       - ./log4j.properties:/etc/kafka/log4j.properties
-  mongodb:
-    image: mongo:7
-    container_name: mongodb
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mi_basedatos
+      MYSQL_USER: proyecto
+      MYSQL_PASSWORD: deeplearning
     ports:
-      - "27017:27017"
+      - "3306:3306"
     volumes:
-      - mongodb_data:/data/db
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mongodb_data:
+  mysql_data:
+  zookeeper_data:
+  kafka_data:
+    

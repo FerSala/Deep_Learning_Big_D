@@ -15,7 +15,7 @@ producer = KafkaProducer(bootstrap_servers='localhost:9092',
 while True:
     try:
         comment = random.choice(comments)
-        key = str(comment['textID']).encode('utf-8')
+        key = str(comment['USER_ID']).encode('utf-8')
         value = str(comment['text']).encode('utf-8')
         producer.send('user-topic', value=comment) #Muy importante que el topic sea el mismo que el del consumer
         time.sleep(random.uniform(0.5, 3.0))
