@@ -52,7 +52,10 @@ services:
       - "3000:3000"
     environment:
       MB_DB_TYPE: mysql
-      MB_DB_CONNECTION_URI: jdbc:mysql://mysql:3306/mi_basedatos?useSSL=false&serverTimezone=UTC
+      MB_DB_CONNECTION_URI: jdbc:mysql://mysql:3306/mi_basedatos?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      MB_DB_DBNAME: mi_basedatos
+      MB_DB_HOST: mysql
+      MB_DB_PORT: 3306
       MB_DB_USER: proyecto
       MB_DB_PASS: deeplearning
     depends_on:
