@@ -20,9 +20,11 @@ while True:
         producer.send('user-topic', value=comment) #Muy importante que el topic sea el mismo que el del consumer
         time.sleep(random.uniform(0.5, 3.0))
         print(f"Sent: {comment}")
-        #print(f'Time between messages: {random.uniform(0.5, 3.0):.2f} seconds')
     except Exception as e:
         print("Error occurred:", e)
+    except KeyboardInterrupt: # Press Ctrl+C to stop the loop
+        print("Interrupted by user. Exiting...")
+        break
 
 producer.flush()
 producer.close()

@@ -1,6 +1,7 @@
 # Proyecto Final - Modelos de Machine Learning y Bases de Datos
 import torch
 import pandas as pd
+import time
 
 class SentimentAnalysis:
     def __init__(self, model_name="tabularisai/multilingual-sentiment-analysis"):
@@ -73,29 +74,36 @@ class MySQL:
             CREATE TABLE IF NOT EXISTS mi_tabla (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 User_ID VARCHAR(255) NOT NULL,
-                Texto VARCHAR(255) NOT NULL,
-                Sentimiento VARCHAR(50) NOT NULL,
+                Text VARCHAR(255) NOT NULL,
+                Sentiment VARCHAR(50) NOT NULL
             )
         """)
         self.connection.commit()
-        
+    
+    def clean_table(self):
+        self.cursor.execute("DELETE FROM mi_tabla")
+        self.connection.commit()
+
     def upload(self, data):
         if data is None:
             raise ValueError("Data is empty.")
         else:
             data = data.to_dict('records')
-        self.cursor.execute("DELETE FROM mi_tabla")
         try:
             for record in data:
                 self.cursor.execute("""
-                    INSERT INTO mi_tabla (User_ID, Texto, Sentimiento)
+                    INSERT INTO mi_tabla (User_ID, Text, Sentiment)
                     VALUES (%s, %s, %s)
-                """, (record['User_ID'], record['Texto'], record['Sentimiento']))
+                """, (record['User_ID'], record['Text'], record['Sentiment']))
             self.connection.commit()
         except Exception as e:
             print(f"Error inserting data: {e}")
             self.connection.rollback()
-        
+    
+    def request_data(self):
+        self.cursor.execute("SELECT * FROM mi_tabla")
+        return self.cursor.fetchall()
+
     def close(self):
         self.cursor.close()
         self.connection.close()
@@ -103,40 +111,51 @@ class MySQL:
 mongo = Mongo()
 mysql = MySQL()
 sentiment_analyzer = SentimentAnalysis()
+mysql.create_table()  # Ensure the table is created before uploading data
+#mysql.clean_table()  # Clean the table before uploading new data
 # Example usage:
 
 while True:
     try:
-        # Assuming 'data' is a DataFrame with the necessary columns
-        data = mongo.request_db()
+        # Retrieve data from MongoDB
+        # Assuming 'Status' field is used to filter unprocessed data
+        data = mongo.request_db({'Status': 'Not Processed'})
+        data = list(data)  # Convert cursor to list
         if not data:
-            print("No data found in MongoDB.")
-            break
+            time.sleep(5)  # Wait before checking again
+            print("No data found in MongoDB with status 'Not Processed'.")
+            continue
         # Convert MongoDB data to a DataFrame
         data = pd.DataFrame(list(data))
-        if data.empty:
-            print("No data found in MongoDB.")
-            break
         print("Data retrieved from MongoDB:", data.head())
         # Predict sentiment
         sentiments, probabilities = sentiment_analyzer.predict(data['text'].tolist())
         data['Sentiment'] = sentiments
         
-        # Upload to MongoDB
         # Update MongoDB with processed status
         for record in data.to_dict('records'):
             mongo.collection.update_one(
             {'_id': record['_id']}, 
-            {'$set': {'status': 'procesado', 'Sentiment': record['Sentiment']}}
+            {'$set': {'Status': 'Processed'}}
             )
         
+        # Drop the 'Status' column before uploading to MySQL
+        data = data.drop(columns=['Status'])
+        data = data.rename(columns={'USER_ID': 'User_ID', 'text': 'Text'})  # Rename columns for MySQL
         # Upload to MySQL
-        mysql.upload(data)
-        
-        print("Data uploaded successfully.")
+        try:
+            mysql.upload(data)
+            print("Data uploaded successfully to MySQL.")
+            print('MySQL data:', mysql.request_data())
+        except Exception as e:
+            print(f"Error uploading data to MySQL: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
-    finally:
-        mongo.close()
-        mysql.close()
-        break  # Remove this line if you want to run continuously
+
+    except KeyboardInterrupt: #Press Ctrl+C to stop the loop
+        print("Interrupted by user. Exiting...")
+        break
+
+# Close connections
+mongo.close()
+mysql.close()

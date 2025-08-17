@@ -45,9 +45,23 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  metabase:
+    image: metabase/metabase:v0.45.2
+    container_name: metabase
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: mysql
+      MB_DB_CONNECTION_URI: jdbc:mysql://mysql:3306/mi_basedatos?useSSL=false&serverTimezone=UTC
+      MB_DB_USER: proyecto
+      MB_DB_PASS: deeplearning
+    depends_on:
+      - mysql
+
 volumes:
   mongodb_data:
   mysql_data:
   zookeeper_data:
   kafka_data:
+  metabase_data:
     

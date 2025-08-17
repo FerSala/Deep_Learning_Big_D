@@ -22,6 +22,9 @@ while True:
         print(f"Sent: {comment}")
     except Exception as e:
         print("Error occurred:", e)
+    except KeyboardInterrupt: # Press Ctrl+C to stop the loop
+        print("Interrupted by user. Exiting...")
+        break
 
 producer.flush()
 producer.close()
